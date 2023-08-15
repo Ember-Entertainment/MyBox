@@ -210,6 +210,12 @@ namespace MyBox.Internal
 		/// </summary>
 		private float scrollOffset;
 
+		/// <summary>
+		/// Detect if the mouse is over the content area of teh ScrollView.
+		/// Used to disable the row highlight when you aren't moused over the content area.
+		/// </summary>
+		private bool mouseIsOverScollContent = false;
+
 		#endregion -- Private Variables ---------------------------------------
 
 		#region -- GUI Styles -------------------------------------------------
@@ -327,6 +333,8 @@ namespace MyBox.Internal
 				scrollRect.width - GUI.skin.verticalScrollbar.fixedWidth,
 				list.Entries.Count * ROW_HEIGHT);
 
+			mouseIsOverScollContent = contentRect.Contains(Event.current.mousePosition);
+
 			scroll = GUI.BeginScrollView(scrollRect, scroll, contentRect);
 
 			var rowRect = list.RowRect;
@@ -367,9 +375,13 @@ namespace MyBox.Internal
 		private void DrawRow(Rect rowRect, int i)
 		{
 			if (list.Entries[i].index == currentIndex)
+			{
 				DrawBox(rowRect, Color.cyan);
-			else if (i == hoverIndex)
+			}
+			else if (i == hoverIndex && mouseIsOverScollContent)
+			{
 				DrawBox(rowRect, Color.white);
+			}
 								
 			GUIStyle styleLabel = GUI.skin.label;
 			Rect labelRect = new Rect(
