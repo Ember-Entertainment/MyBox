@@ -218,9 +218,10 @@ namespace MyBox.Internal
 		// the current skin which will be the editor skin and lets us get some
 		// built-in styles.
 
-		private static readonly GUIStyle SearchBox = "ToolbarSearchTextField";
-		private static readonly GUIStyle CancelButton = "ToolbarSearchCancelButton";
-		private static readonly GUIStyle DisabledCancelButton = "ToolbarSearchCancelButtonEmpty";
+		// Yeah, "Seach" instead of "Search", it's Unity's typo
+		private static readonly GUIStyle SearchBox = "ToolbarSeachTextField";
+		private static readonly GUIStyle CancelButton = "ToolbarSeachCancelButton";
+		private static readonly GUIStyle DisabledCancelButton = "ToolbarSeachCancelButtonEmpty";
 		private static readonly GUIStyle Selection = "SelectionRect";
 
 		#endregion -- GUI Styles ----------------------------------------------
