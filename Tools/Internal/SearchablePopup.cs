@@ -115,6 +115,8 @@ namespace MyBox.Internal
 				get { return allItems.Length; }
 			}
 
+			public float Width = 0.0f;
+
 			/// <summary>
 			/// Sets a new filter string and updates the Entries that match the
 			/// new filter if it has changed.
@@ -131,6 +133,7 @@ namespace MyBox.Internal
 
 				Filter = filter;
 				Entries.Clear();
+				Width = 0.0f;
 
 				for (int i = 0; i < allItems.Length; i++)
 				{
@@ -145,6 +148,11 @@ namespace MyBox.Internal
 							Entries.Insert(0, entry);
 						else
 							Entries.Add(entry);
+
+						GUIStyle style = GUI.skin.scrollView;
+						GUIContent content = new GUIContent(entry.text);
+						var textSize = style.CalcSize(content);
+						Width = Math.Max(Width, textSize.x);
 					}
 				}
 
@@ -166,7 +174,7 @@ namespace MyBox.Internal
 
 		/// <summary>
 		/// Container for all available options that does the actual string
-		/// filtering of the content.  
+		/// filtering of the content.
 		/// </summary>
 		private readonly FilteredList list;
 
@@ -198,10 +206,9 @@ namespace MyBox.Internal
 		// the current skin which will be the editor skin and lets us get some
 		// built-in styles.
 
-		// Yeah, "Seach" instead of "Search", it's Unity's typo
-		private static readonly GUIStyle SearchBox = "ToolbarSeachTextField";
-		private static readonly GUIStyle CancelButton = "ToolbarSeachCancelButton";
-		private static readonly GUIStyle DisabledCancelButton = "ToolbarSeachCancelButtonEmpty";
+		private static readonly GUIStyle SearchBox = "ToolbarSearchTextField";
+		private static readonly GUIStyle CancelButton = "ToolbarSearchCancelButton";
+		private static readonly GUIStyle DisabledCancelButton = "ToolbarSearchCancelButtonEmpty";
 		private static readonly GUIStyle Selection = "SelectionRect";
 
 		#endregion -- GUI Styles ----------------------------------------------
@@ -238,15 +245,16 @@ namespace MyBox.Internal
 
 		public override Vector2 GetWindowSize()
 		{
-			return new Vector2(base.GetWindowSize().x,
-				Mathf.Min(600, list.MaxLength * ROW_HEIGHT +
-				               EditorStyles.toolbar.fixedHeight));
+			return new Vector2(
+				Math.Max(base.GetWindowSize().x, list.Width),
+				Mathf.Min(600, list.MaxLength * ROW_HEIGHT + EditorStyles.toolbar.fixedHeight)
+			);
 		}
 
 		public override void OnGUI(Rect rect)
 		{
 			Rect searchRect = new Rect(0, 0, rect.width, EditorStyles.toolbar.fixedHeight);
-			Rect scrollRect = Rect.MinMaxRect(0, searchRect.yMax, rect.xMax, rect.yMax);
+			Rect scrollRect = Rect.MinMaxRect(0, searchRect.yMax, rect.width, rect.yMax);
 
 			HandleKeyboard();
 			DrawSearch(searchRect);
