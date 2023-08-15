@@ -56,7 +56,11 @@ namespace MyBox
 		/// Search for Objects from anywhere in the project.
 		/// Combines the results of Scene and Asset modes.
 		/// </summary>
-		Any = 4
+		Any = 4,
+		/// <summary>
+		/// Search for Objects from this GO only.
+		/// </summary>
+		Self = 5,
 	}
 }
 
@@ -109,7 +113,11 @@ namespace MyBox.Internal
 					.Where(pred).ToArray(),
 				[AutoPropertyMode.Any] = (property, pred) => Resources
 					.FindObjectsOfTypeAll(property.Field.FieldType.GetElementType() ?? property.Field.FieldType)
-					.Where(pred).ToArray()
+					.Where(pred).ToArray(),
+				[AutoPropertyMode.Self] = (property, pred) => property.Context
+					.As<Component>()
+					?.GetComponents(property.Field.FieldType.GetElementType() ?? property.Field.FieldType)
+					.Where(pred).ToArray(),
 			};
 
 		static AutoPropertyHandler()
