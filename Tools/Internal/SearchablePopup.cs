@@ -23,9 +23,6 @@ namespace MyBox.Internal
 		/// <summary> Height of each element in the popup list. </summary>
 		private const float ROW_HEIGHT = 16.0f;
 
-		/// <summary> How far to indent list entries. </summary>
-		private const float ROW_INDENT = 8.0f;
-
 		/// <summary> Name to use for the text field for search. </summary>
 		private const string SEARCH_CONTROL_NAME = "EnumSearchText";
 
@@ -114,8 +111,17 @@ namespace MyBox.Internal
 			{
 				get { return allItems.Length; }
 			}
+			
+			/// <summary>
+			/// The size and position of the first row in the scrollable.
+			/// Used to calculate the minimum scrollable window window width using the widest row's text width.
+			/// </summary>
+			public Rect RowRect;
 
-			public float Width = 0.0f;
+			/// <summary>
+			/// Used to calculate the minimum scrollable window window width using the widest row's text width.
+			/// </summary>
+			public float WindowWidth = 0.0f;
 
 			/// <summary>
 			/// Sets a new filter string and updates the Entries that match the
@@ -133,7 +139,11 @@ namespace MyBox.Internal
 
 				Filter = filter;
 				Entries.Clear();
-				Width = 0.0f;
+				var rowWidth = 0.0f;
+
+				GUIStyle styleScrollbar = GUI.skin.verticalScrollbar;
+				GUIStyle styleBox = GUI.skin.box;
+				GUIStyle styleLabel = GUI.skin.label;
 
 				for (int i = 0; i < allItems.Length; i++)
 				{
@@ -149,12 +159,14 @@ namespace MyBox.Internal
 						else
 							Entries.Add(entry);
 
-						GUIStyle style = GUI.skin.scrollView;
 						GUIContent content = new GUIContent(entry.text);
-						var textSize = style.CalcSize(content);
-						Width = Math.Max(Width, textSize.x);
+						var textSize = styleBox.CalcSize(content);
+						rowWidth = Math.Max(rowWidth, textSize.x);
 					}
 				}
+				
+				RowRect = new Rect(styleBox.margin.left, 0, rowWidth + styleLabel.margin.horizontal, ROW_HEIGHT);
+				WindowWidth = RowRect.width + styleBox.margin.horizontal + styleScrollbar.fixedWidth;
 
 				return true;
 			}
@@ -246,7 +258,7 @@ namespace MyBox.Internal
 		public override Vector2 GetWindowSize()
 		{
 			return new Vector2(
-				Math.Max(base.GetWindowSize().x, list.Width),
+				Math.Max(base.GetWindowSize().x, list.WindowWidth),
 				Mathf.Min(600, list.MaxLength * ROW_HEIGHT + EditorStyles.toolbar.fixedHeight)
 			);
 		}
@@ -306,7 +318,7 @@ namespace MyBox.Internal
 
 			scroll = GUI.BeginScrollView(scrollRect, scroll, contentRect);
 
-			Rect rowRect = new Rect(0, 0, scrollRect.width, ROW_HEIGHT);
+			var rowRect = list.RowRect;
 
 			for (int i = 0; i < list.Entries.Count; i++)
 			{
@@ -347,9 +359,14 @@ namespace MyBox.Internal
 				DrawBox(rowRect, Color.cyan);
 			else if (i == hoverIndex)
 				DrawBox(rowRect, Color.white);
-
-			Rect labelRect = new Rect(rowRect);
-			labelRect.xMin += ROW_INDENT;
+								
+			GUIStyle styleLabel = GUI.skin.label;
+			Rect labelRect = new Rect(
+				rowRect.position.x + styleLabel.margin.left,
+				rowRect.position.y,
+				rowRect.width - styleLabel.margin.horizontal,
+				rowRect.height
+			);
 
 			GUI.Label(labelRect, list.Entries[i].text);
 		}
