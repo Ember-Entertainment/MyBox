@@ -6,9 +6,45 @@
 
 using UnityEngine;
 
-
 namespace MyBox
 {
+	using System;
+
+	public enum SearchableEnumSorting
+	{
+		/// <summary>
+		/// Sort by the underlying numerical value of this enum.
+		/// I.e. <see cref="Enum.GetValues(Type)"/>.
+		/// <br></br>
+		/// This is the order Unity will give the list to us.
+		/// </summary>
+		Numerical,
+
+		/// <summary>
+		/// Sort by the enum name string. The exact contents of that name string are chosen by
+		/// <see cref="SearchableEnumAttribute.Naming"/>
+		/// </summary>
+		Alphabetical,
+	}
+
+	public enum SearchableEnumNaming
+	{
+		/// <summary>
+		/// This is the equivalent of <see cref=".Enum.ToString()"/>.
+		/// </summary>
+		Name,
+
+		/// <summary>
+		/// This is the equivalent of calling <see cref="UnityEditor.ObjectNames.NicifyVariableName"/> on the result of
+		/// <see cref="Enum.ToString()"/>.
+		/// </summary>
+		DisplayName,
+
+		NameAndValueDec,
+
+		NameAndValueHex,
+	}
+
 	/// <summary>
 	/// Put this attribute on a public (or SerializeField) enum in a
 	/// MonoBehaviour or ScriptableObject to get an improved enum selector
@@ -16,6 +52,11 @@ namespace MyBox
 	/// </summary>
 	public class SearchableEnumAttribute : PropertyAttribute
 	{
+		/// <summary>Control how the entries in the list are displayed.</summary>
+		public SearchableEnumNaming Naming = SearchableEnumNaming.Name;
+
+		/// <summary>Control how the list is sorted.</summary>
+		public SearchableEnumSorting Sorting = SearchableEnumSorting.Alphabetical;
 	}
 }
 
@@ -23,7 +64,7 @@ namespace MyBox
 namespace MyBox.EditorTools
 {
 	using UnityEditor;
-	
+
 	/// <summary>
 	/// Base class to easily create searchable enum types
 	/// </summary>
@@ -42,8 +83,9 @@ namespace MyBox.EditorTools
 
 namespace MyBox.Internal
 {
-	using UnityEditor;
 	using System;
+	using UnityEditor;
+	using UnityEngine.UIElements;
 
 	/// <summary>
 	/// Draws the custom enum selector popup for enum fields using the
@@ -58,6 +100,10 @@ namespace MyBox.Internal
 		/// Cache of the hash to use to resolve the ID for the drawer.
 		/// </summary>
 		private int idHash;
+
+		private Type _enumType => fieldInfo.FieldType;
+
+		public override VisualElement CreatePropertyGUI(SerializedProperty property) => base.CreatePropertyGUI(property);
 
 		public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
 		{
@@ -82,16 +128,92 @@ namespace MyBox.Internal
 			label = EditorGUI.BeginProperty(position, label, property);
 			position = EditorGUI.PrefixLabel(position, id, label);
 
-			GUIContent buttonText = new GUIContent(property.enumDisplayNames[property.enumValueIndex]);
+			var searchableEnum = (SearchableEnumAttribute)attribute;
+
+			var values = Enum.GetValues(_enumType);
+			string[] list;
+			switch (searchableEnum.Naming)
+			{
+				default:
+				case SearchableEnumNaming.Name:
+				{
+					list = property.enumNames;
+					break;
+				}
+				case SearchableEnumNaming.DisplayName:
+				{
+					list = property.enumDisplayNames;
+					break;
+				}
+				case SearchableEnumNaming.NameAndValueDec:
+				{
+					var names = property.enumNames;
+					list = new string[values.Length];
+					for (int i = 0; i < values.Length; i++)
+					{
+						var value = values.GetValue(i);
+						var decString = Enum.Format(_enumType, value, "d");
+						list[i] = $"{names[i]}, {decString}";
+					}
+					break;
+				}
+				case SearchableEnumNaming.NameAndValueHex:
+				{
+					var names = property.enumNames;
+					list = new string[values.Length];
+					for (int i = 0; i < values.Length; i++)
+					{
+						var value = values.GetValue(i);
+						var hexString = Enum.Format(_enumType, value, "x");
+						var decString = Enum.Format(_enumType, value, "d");
+						list[i] = $"{names[i]}, 0x{hexString}, {decString}";
+					}
+					break;
+				}
+			}
+			
+			var lookupListToProperty = new int[list.Length];
+			for (int i = 0; i < lookupListToProperty.Length; i++)
+			{
+				lookupListToProperty[i] = i;
+			}
+
+			switch (searchableEnum.Sorting)
+			{
+				default:
+				case SearchableEnumSorting.Alphabetical:
+				{
+					Array.Sort(list, lookupListToProperty);
+					break;
+				}
+				case SearchableEnumSorting.Numerical:
+				{
+					// Already sorted this way.
+					break;
+				}
+			}
+
+			var lookupPropertyToList = new int[list.Length];
+			for (int i = 0; i < lookupPropertyToList.Length; i++)
+			{
+				lookupPropertyToList[lookupListToProperty[i]] = i;
+			}
+
+			int Index() => lookupPropertyToList[property.enumValueIndex];
+			void SetIndex(int i) => property.enumValueIndex = lookupListToProperty[i];
+
+			GUIContent buttonText = new GUIContent(list[Index()]);
 			if (DropdownButton(id, position, buttonText))
 			{
-				SearchablePopup.Show(position, property.enumDisplayNames, property.enumValueIndex, OnSelect);
-				
-				void OnSelect(int i)
+				Action<int> onSelect = i =>
 				{
-					property.enumValueIndex = i;
+					SetIndex(i);
+					//property.enumValueFlag = (int)values.GetValue(i);
 					property.serializedObject.ApplyModifiedProperties();
-				}
+				};
+
+				SearchablePopup.Show(position, list,
+					Index(), onSelect);
 			}
 
 			EditorGUI.EndProperty();
