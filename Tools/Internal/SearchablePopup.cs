@@ -23,9 +23,6 @@ namespace MyBox.Internal
 		/// <summary> Height of each element in the popup list. </summary>
 		private const float ROW_HEIGHT = 16.0f;
 
-		/// <summary> How far to indent list entries. </summary>
-		private const float ROW_INDENT = 8.0f;
-
 		/// <summary> Name to use for the text field for search. </summary>
 		private const string SEARCH_CONTROL_NAME = "EnumSearchText";
 
@@ -114,6 +111,17 @@ namespace MyBox.Internal
 			{
 				get { return allItems.Length; }
 			}
+			
+			/// <summary>
+			/// The size and position of the first row in the scrollable.
+			/// Used to calculate the minimum scrollable window window width using the widest row's text width.
+			/// </summary>
+			public Rect RowRect;
+
+			/// <summary>
+			/// Used to calculate the minimum scrollable window window width using the widest row's text width.
+			/// </summary>
+			public float WindowWidth = 0.0f;
 
 			/// <summary>
 			/// Sets a new filter string and updates the Entries that match the
@@ -131,6 +139,11 @@ namespace MyBox.Internal
 
 				Filter = filter;
 				Entries.Clear();
+				var rowWidth = 0.0f;
+
+				GUIStyle styleScrollbar = GUI.skin.verticalScrollbar;
+				GUIStyle styleBox = GUI.skin.box;
+				GUIStyle styleLabel = GUI.skin.label;
 
 				for (int i = 0; i < allItems.Length; i++)
 				{
@@ -145,8 +158,15 @@ namespace MyBox.Internal
 							Entries.Insert(0, entry);
 						else
 							Entries.Add(entry);
+
+						GUIContent content = new GUIContent(entry.text);
+						var textSize = styleBox.CalcSize(content);
+						rowWidth = Math.Max(rowWidth, textSize.x);
 					}
 				}
+				
+				RowRect = new Rect(styleBox.margin.left, 0, rowWidth + styleLabel.margin.horizontal, ROW_HEIGHT);
+				WindowWidth = RowRect.width + styleBox.margin.horizontal + styleScrollbar.fixedWidth;
 
 				return true;
 			}
@@ -166,7 +186,7 @@ namespace MyBox.Internal
 
 		/// <summary>
 		/// Container for all available options that does the actual string
-		/// filtering of the content.  
+		/// filtering of the content.
 		/// </summary>
 		private readonly FilteredList list;
 
@@ -248,15 +268,16 @@ namespace MyBox.Internal
 
 		public override Vector2 GetWindowSize()
 		{
-			return new Vector2(base.GetWindowSize().x,
-				Mathf.Min(600, list.MaxLength * ROW_HEIGHT +
-				               EditorStyles.toolbar.fixedHeight));
+			return new Vector2(
+				Math.Max(base.GetWindowSize().x, list.WindowWidth),
+				Mathf.Min(600, list.MaxLength * ROW_HEIGHT + EditorStyles.toolbar.fixedHeight)
+			);
 		}
 
 		public override void OnGUI(Rect rect)
 		{
 			Rect searchRect = new Rect(0, 0, rect.width, EditorStyles.toolbar.fixedHeight);
-			Rect scrollRect = Rect.MinMaxRect(0, searchRect.yMax, rect.xMax, rect.yMax);
+			Rect scrollRect = Rect.MinMaxRect(0, searchRect.yMax, rect.width, rect.yMax);
 
 			HandleKeyboard();
 			DrawSearch(searchRect);
@@ -308,7 +329,7 @@ namespace MyBox.Internal
 
 			scroll = GUI.BeginScrollView(scrollRect, scroll, contentRect);
 
-			Rect rowRect = new Rect(0, 0, scrollRect.width, ROW_HEIGHT);
+			var rowRect = list.RowRect;
 
 			for (int i = 0; i < list.Entries.Count; i++)
 			{
@@ -349,9 +370,14 @@ namespace MyBox.Internal
 				DrawBox(rowRect, Color.cyan);
 			else if (i == hoverIndex)
 				DrawBox(rowRect, Color.white);
-
-			Rect labelRect = new Rect(rowRect);
-			labelRect.xMin += ROW_INDENT;
+								
+			GUIStyle styleLabel = GUI.skin.label;
+			Rect labelRect = new Rect(
+				rowRect.position.x + styleLabel.margin.left,
+				rowRect.position.y,
+				rowRect.width - styleLabel.margin.horizontal,
+				rowRect.height
+			);
 
 			GUI.Label(labelRect, list.Entries[i].text);
 		}
