@@ -40,8 +40,16 @@ namespace MyBox
 		/// </summary>
 		DisplayName,
 
+		/// <summary>
+		/// The same as <see cref="Name"/> with the value displayed as a decimal integer afterwards.
+		/// </summary>
 		NameAndValueDec,
+		
 
+		/// <summary>
+		/// The same as <see cref="Name"/> with the value displayed as a hexadecimal integer and then as a decimal
+		/// integer afterwards.
+		/// </summary>
 		NameAndValueHex,
 	}
 
@@ -84,6 +92,7 @@ namespace MyBox.EditorTools
 namespace MyBox.Internal
 {
 	using System;
+	using System.Collections.Generic;
 	using UnityEditor;
 	using UnityEngine.UIElements;
 
@@ -102,6 +111,11 @@ namespace MyBox.Internal
 		private int idHash;
 
 		private Type _enumType => fieldInfo.FieldType;
+
+		/// <summary>
+		/// For caching the sorting and naming of each enum type to avoid doing it in every OnGUI call.
+		/// </summary>
+		private static Dictionary<EnumListDataKey, EnumListData> _enumListData = new Dictionary<EnumListDataKey, EnumListData>();
 
 		public override VisualElement CreatePropertyGUI(SerializedProperty property) => base.CreatePropertyGUI(property);
 
@@ -128,92 +142,30 @@ namespace MyBox.Internal
 			label = EditorGUI.BeginProperty(position, label, property);
 			position = EditorGUI.PrefixLabel(position, id, label);
 
-			var searchableEnum = (SearchableEnumAttribute)attribute;
-
-			var values = Enum.GetValues(_enumType);
-			string[] list;
-			switch (searchableEnum.Naming)
+			// memoize the sorting and naming for this enum type
+			var enumListDataKey = new EnumListDataKey()
 			{
-				default:
-				case SearchableEnumNaming.Name:
-				{
-					list = property.enumNames;
-					break;
-				}
-				case SearchableEnumNaming.DisplayName:
-				{
-					list = property.enumDisplayNames;
-					break;
-				}
-				case SearchableEnumNaming.NameAndValueDec:
-				{
-					var names = property.enumNames;
-					list = new string[values.Length];
-					for (int i = 0; i < values.Length; i++)
-					{
-						var value = values.GetValue(i);
-						var decString = Enum.Format(_enumType, value, "d");
-						list[i] = $"{names[i]}, {decString}";
-					}
-					break;
-				}
-				case SearchableEnumNaming.NameAndValueHex:
-				{
-					var names = property.enumNames;
-					list = new string[values.Length];
-					for (int i = 0; i < values.Length; i++)
-					{
-						var value = values.GetValue(i);
-						var hexString = Enum.Format(_enumType, value, "x");
-						var decString = Enum.Format(_enumType, value, "d");
-						list[i] = $"{names[i]}, 0x{hexString}, {decString}";
-					}
-					break;
-				}
-			}
-			
-			var lookupListToProperty = new int[list.Length];
-			for (int i = 0; i < lookupListToProperty.Length; i++)
+				EnumType = _enumType,
+				Attribute = (SearchableEnumAttribute)attribute,
+			};
+			if (!_enumListData.ContainsKey(enumListDataKey))
 			{
-				lookupListToProperty[i] = i;
+				_enumListData.Add(enumListDataKey, new EnumListData(enumListDataKey.EnumType, property, enumListDataKey.Attribute));
 			}
+			var enumListData = _enumListData[enumListDataKey];
 
-			switch (searchableEnum.Sorting)
-			{
-				default:
-				case SearchableEnumSorting.Alphabetical:
-				{
-					Array.Sort(list, lookupListToProperty);
-					break;
-				}
-				case SearchableEnumSorting.Numerical:
-				{
-					// Already sorted this way.
-					break;
-				}
-			}
-
-			var lookupPropertyToList = new int[list.Length];
-			for (int i = 0; i < lookupPropertyToList.Length; i++)
-			{
-				lookupPropertyToList[lookupListToProperty[i]] = i;
-			}
-
-			int Index() => lookupPropertyToList[property.enumValueIndex];
-			void SetIndex(int i) => property.enumValueIndex = lookupListToProperty[i];
-
-			GUIContent buttonText = new GUIContent(list[Index()]);
+			var dropdownIndex = enumListData.PropertyIndexToDropdownIndex(property.enumValueIndex);
+			GUIContent buttonText = new GUIContent(enumListData.DropdownValues[dropdownIndex]);
 			if (DropdownButton(id, position, buttonText))
 			{
 				Action<int> onSelect = i =>
 				{
-					SetIndex(i);
-					//property.enumValueFlag = (int)values.GetValue(i);
+					property.enumValueIndex = enumListData.DropdownIndexToPropertyIndex(i);
 					property.serializedObject.ApplyModifiedProperties();
 				};
 
-				SearchablePopup.Show(position, list,
-					Index(), onSelect);
+				SearchablePopup.Show(position, enumListData.DropdownValues,
+					dropdownIndex, onSelect);
 			}
 
 			EditorGUI.EndProperty();
@@ -251,6 +203,120 @@ namespace MyBox.Internal
 			}
 
 			return false;
+		}
+		
+		private class EnumListDataKey : IEquatable<EnumListDataKey>
+		{
+			public Type EnumType;
+			public SearchableEnumAttribute Attribute;
+
+			public bool Equals(EnumListDataKey other)
+			{
+				if (other == null)
+				{
+					return false;
+				}
+				if (EnumType != other.EnumType)
+				{
+					return false;
+				}
+				if (Attribute.Naming != other.Attribute.Naming)
+				{
+					return false;
+				}
+				if (Attribute.Sorting != other.Attribute.Sorting)
+				{
+					return false;
+				}
+				return true;
+			}
+
+			public override int GetHashCode() => EnumType.GetHashCode() + Attribute.Naming.GetHashCode() << 2 + Attribute.Sorting.GetHashCode() << 4;
+		}
+		
+		private class EnumListData
+		{
+			public Type EnumType;
+			public string[] DropdownValues;
+			private int[] _dropdownIndexToPropertyIndex;
+			private int[] _propertyIndexToDropdownIndex;
+
+			public int DropdownIndexToPropertyIndex(int i) => _dropdownIndexToPropertyIndex[i];
+			public int PropertyIndexToDropdownIndex(int i) => _propertyIndexToDropdownIndex[i];
+
+			public EnumListData(Type enumType, SerializedProperty property, SearchableEnumAttribute searchableEnum)
+			{
+				EnumType = enumType;
+
+				var values = Enum.GetValues(EnumType);
+
+				switch (searchableEnum.Naming)
+				{
+					default:
+					case SearchableEnumNaming.Name:
+						{
+							DropdownValues = property.enumNames;
+							break;
+						}
+					case SearchableEnumNaming.DisplayName:
+						{
+							DropdownValues = property.enumDisplayNames;
+							break;
+						}
+					case SearchableEnumNaming.NameAndValueDec:
+						{
+							var names = property.enumNames;
+							DropdownValues = new string[values.Length];
+							for (int i = 0; i < values.Length; i++)
+							{
+								var value = values.GetValue(i);
+								var decString = Enum.Format(EnumType, value, "d");
+								DropdownValues[i] = $"{names[i]}, {decString}";
+							}
+							break;
+						}
+					case SearchableEnumNaming.NameAndValueHex:
+						{
+							var names = property.enumNames;
+							DropdownValues = new string[values.Length];
+							for (int i = 0; i < values.Length; i++)
+							{
+								var value = values.GetValue(i);
+								var hexString = Enum.Format(EnumType, value, "x");
+								var decString = Enum.Format(EnumType, value, "d");
+								DropdownValues[i] = $"{names[i]}, 0x{hexString}, {decString}";
+							}
+							break;
+						}
+				}
+
+				_dropdownIndexToPropertyIndex = new int[DropdownValues.Length];
+				for (int i = 0; i < _dropdownIndexToPropertyIndex.Length; i++)
+				{
+					_dropdownIndexToPropertyIndex[i] = i;
+				}
+
+				switch (searchableEnum.Sorting)
+				{
+					default:
+					case SearchableEnumSorting.Alphabetical:
+						{
+							Array.Sort(DropdownValues, _dropdownIndexToPropertyIndex);
+							break;
+						}
+					case SearchableEnumSorting.Numerical:
+						{
+							// Already sorted this way.
+							break;
+						}
+				}
+
+				_propertyIndexToDropdownIndex = new int[DropdownValues.Length];
+				for (int i = 0; i < _propertyIndexToDropdownIndex.Length; i++)
+				{
+					_propertyIndexToDropdownIndex[_dropdownIndexToPropertyIndex[i]] = i;
+				}
+			}
 		}
 	}
 }
