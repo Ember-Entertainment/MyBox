@@ -231,14 +231,13 @@ namespace MyBox.Internal
 		private static readonly GUIStyle SearchBox = "ToolbarSearchTextField";
 		private static readonly GUIStyle CancelButton = "ToolbarSearchCancelButton";
 		private static readonly GUIStyle DisabledCancelButton = "ToolbarSearchCancelButtonEmpty";
-		private static readonly GUIStyle Selection = "SelectionRect";
 #else
 		// Yeah, "Seach" instead of "Search", it's Unity's typo
 		private static readonly GUIStyle SearchBox = "ToolbarSeachTextField";
 		private static readonly GUIStyle CancelButton = "ToolbarSeachCancelButton";
 		private static readonly GUIStyle DisabledCancelButton = "ToolbarSeachCancelButtonEmpty";
-		private static readonly GUIStyle Selection = "SelectionRect";
 #endif
+		private static readonly GUIStyle Selection = "SelectionRect";
 
 		#endregion -- GUI Styles ----------------------------------------------
 
