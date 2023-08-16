@@ -1,4 +1,4 @@
-﻿// ---------------------------------------------------------------------------- 
+﻿// ----------------------------------------------------------------------------
 // Author: Ryan Hipple
 // Date:   05/01/2018
 // Source: https://github.com/roboryantron/UnityEditorJunkie
@@ -49,7 +49,6 @@ namespace MyBox
 		/// The same as <see cref="Name"/> with the value displayed as a decimal integer afterwards.
 		/// </summary>
 		NameAndValueDec,
-		
 
 		/// <summary>
 		/// The same as <see cref="Name"/> with the value displayed as a hexadecimal integer and then as a decimal
@@ -70,7 +69,7 @@ namespace MyBox
 
 		/// <summary>Control how the list is sorted.</summary>
 		public SearchableEnumSorting Sorting = SearchableEnumSorting.Alphabetical;
-		
+
 		public SearchableEnumAttribute(
 			SearchableEnumNaming naming = SearchableEnumNaming.Name,
 			SearchableEnumSorting sorting = SearchableEnumSorting.Alphabetical
@@ -93,9 +92,11 @@ namespace MyBox.EditorTools
 	public class SearchableEnumDrawer : PropertyDrawer
 	{
 		private Internal.SearchableEnumAttributeDrawer _drawer;
+
 		public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
 		{
-			if (_drawer == null) _drawer = new Internal.SearchableEnumAttributeDrawer();
+			if (_drawer == null)
+				_drawer = new Internal.SearchableEnumAttributeDrawer();
 			GUIContent content = new GUIContent(property.displayName);
 			Rect drawerRect = EditorGUILayout.GetControlRect(true, _drawer.GetPropertyHeight(property, content));
 			_drawer.OnGUI(drawerRect, property, content);
@@ -129,9 +130,11 @@ namespace MyBox.Internal
 		/// <summary>
 		/// For caching the sorting and naming of each enum type to avoid doing it in every OnGUI call.
 		/// </summary>
-		private static Dictionary<EnumListDataKey, EnumListData> _enumListData = new Dictionary<EnumListDataKey, EnumListData>();
+		private static Dictionary<EnumListDataKey, EnumListData> _enumListData =
+			new Dictionary<EnumListDataKey, EnumListData>();
 
-		public override VisualElement CreatePropertyGUI(SerializedProperty property) => base.CreatePropertyGUI(property);
+		public override VisualElement CreatePropertyGUI(SerializedProperty property) =>
+			base.CreatePropertyGUI(property);
 
 		public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
 		{
@@ -150,7 +153,8 @@ namespace MyBox.Internal
 			// By manually creating the control ID, we can keep the ID for the
 			// label and button the same. This lets them be selected together
 			// with the keyboard in the inspector, much like a normal popup.
-			if (idHash == 0) idHash = "SearchableEnumAttributeDrawer".GetHashCode();
+			if (idHash == 0)
+				idHash = "SearchableEnumAttributeDrawer".GetHashCode();
 			int id = GUIUtility.GetControlID(idHash, FocusType.Keyboard, position);
 
 			label = EditorGUI.BeginProperty(position, label, property);
@@ -164,7 +168,10 @@ namespace MyBox.Internal
 			};
 			if (!_enumListData.ContainsKey(enumListDataKey))
 			{
-				_enumListData.Add(enumListDataKey, new EnumListData(enumListDataKey.EnumType, property, enumListDataKey.Attribute));
+				_enumListData.Add(
+					enumListDataKey,
+					new EnumListData(enumListDataKey.EnumType, property, enumListDataKey.Attribute)
+				);
 			}
 			var enumListData = _enumListData[enumListDataKey];
 
@@ -178,8 +185,7 @@ namespace MyBox.Internal
 					property.serializedObject.ApplyModifiedProperties();
 				};
 
-				SearchablePopup.Show(position, enumListData.DropdownValues,
-					dropdownIndex, onSelect);
+				SearchablePopup.Show(position, enumListData.DropdownValues, dropdownIndex, onSelect);
 			}
 
 			EditorGUI.EndProperty();
@@ -218,7 +224,7 @@ namespace MyBox.Internal
 
 			return false;
 		}
-		
+
 		private class EnumListDataKey : IEquatable<EnumListDataKey>
 		{
 			public Type EnumType;
@@ -245,7 +251,8 @@ namespace MyBox.Internal
 				return true;
 			}
 
-			public override int GetHashCode() => EnumType.GetHashCode() + Attribute.Naming.GetHashCode() << 2 + Attribute.Sorting.GetHashCode() << 4;
+			public override int GetHashCode() =>
+				EnumType.GetHashCode() + Attribute.Naming.GetHashCode() << 2 + Attribute.Sorting.GetHashCode() << 4;
 		}
 
 		/// <summary>
