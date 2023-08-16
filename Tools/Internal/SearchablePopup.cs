@@ -1,5 +1,5 @@
 ﻿#if UNITY_EDITOR
-// ---------------------------------------------------------------------------- 
+// ----------------------------------------------------------------------------
 // Author: Ryan Hipple
 // Date:   05/01/2018
 // Source: https://github.com/roboryantron/UnityEditorJunkie
@@ -43,8 +43,7 @@ namespace MyBox.Internal
 		/// </param>
 		public static void Show(Rect activatorRect, string[] options, int current, Action<int> onSelectionMade)
 		{
-			SearchablePopup win =
-				new SearchablePopup(options, current, onSelectionMade);
+			SearchablePopup win = new SearchablePopup(options, current, onSelectionMade);
 			PopupWindow.Show(activatorRect, win);
 		}
 
@@ -111,7 +110,7 @@ namespace MyBox.Internal
 			{
 				get { return allItems.Length; }
 			}
-			
+
 			/// <summary>
 			/// The size and position of the first row in the scrollable.
 			/// Used to calculate the minimum scrollable window window width using the widest row's text width.
@@ -149,11 +148,7 @@ namespace MyBox.Internal
 				{
 					if (string.IsNullOrEmpty(Filter) || allItems[i].ToLower().Contains(Filter.ToLower()))
 					{
-						Entry entry = new Entry
-						{
-							index = i,
-							text = allItems[i]
-						};
+						Entry entry = new Entry { index = i, text = allItems[i] };
 						if (string.Equals(allItems[i], Filter, StringComparison.CurrentCultureIgnoreCase))
 							Entries.Insert(0, entry);
 						else
@@ -164,7 +159,7 @@ namespace MyBox.Internal
 						rowWidth = Math.Max(rowWidth, textSize.x);
 					}
 				}
-				
+
 				RowRect = new Rect(styleBox.margin.left, 0, rowWidth + styleLabel.margin.horizontal, ROW_HEIGHT);
 				WindowWidth = RowRect.width + styleBox.margin.horizontal + styleScrollbar.fixedWidth;
 
@@ -319,9 +314,12 @@ namespace MyBox.Internal
 
 		private void DrawSelectionArea(Rect scrollRect)
 		{
-			Rect contentRect = new Rect(0, 0,
+			Rect contentRect = new Rect(
+				0,
+				0,
 				scrollRect.width - GUI.skin.verticalScrollbar.fixedWidth,
-				list.Entries.Count * ROW_HEIGHT);
+				list.Entries.Count * ROW_HEIGHT
+			);
 
 			mouseIsOverScollContent = contentRect.Contains(Event.current.mousePosition);
 
@@ -331,9 +329,10 @@ namespace MyBox.Internal
 
 			for (int i = 0; i < list.Entries.Count; i++)
 			{
-				if (scrollToIndex == i &&
-				    (Event.current.type == EventType.Repaint
-				     || Event.current.type == EventType.Layout))
+				if (
+					scrollToIndex == i
+					&& (Event.current.type == EventType.Repaint || Event.current.type == EventType.Layout)
+				)
 				{
 					Rect r = new Rect(rowRect);
 					r.y += scrollOffset;
@@ -344,8 +343,7 @@ namespace MyBox.Internal
 
 				if (rowRect.Contains(Event.current.mousePosition))
 				{
-					if (Event.current.type == EventType.MouseMove ||
-					    Event.current.type == EventType.ScrollWheel)
+					if (Event.current.type == EventType.MouseMove || Event.current.type == EventType.ScrollWheel)
 						hoverIndex = i;
 					if (Event.current.type == EventType.MouseDown)
 					{
@@ -372,7 +370,7 @@ namespace MyBox.Internal
 			{
 				DrawBox(rowRect, Color.white);
 			}
-								
+
 			GUIStyle styleLabel = GUI.skin.label;
 			Rect labelRect = new Rect(
 				rowRect.position.x + styleLabel.margin.left,
