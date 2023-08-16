@@ -65,6 +65,15 @@ namespace MyBox
 
 		/// <summary>Control how the list is sorted.</summary>
 		public SearchableEnumSorting Sorting = SearchableEnumSorting.Alphabetical;
+		
+		public SearchableEnumAttribute(
+			SearchableEnumNaming naming = SearchableEnumNaming.Name,
+			SearchableEnumSorting sorting = SearchableEnumSorting.Alphabetical
+		)
+		{
+			Naming = naming;
+			Sorting = sorting;
+		}
 	}
 }
 
