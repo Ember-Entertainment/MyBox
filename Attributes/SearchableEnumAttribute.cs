@@ -1,4 +1,4 @@
-﻿// ---------------------------------------------------------------------------- 
+﻿// ----------------------------------------------------------------------------
 // Author: Ryan Hipple
 // Date:   05/01/2018
 // Source: https://github.com/roboryantron/UnityEditorJunkie
@@ -25,6 +25,11 @@ namespace MyBox
 		/// <see cref="SearchableEnumAttribute.Naming"/>
 		/// </summary>
 		Alphabetical,
+
+		/// <summary>
+		/// Sort by the order the enum values are declared.
+		/// </summary>
+		DeclarationOrder,
 	}
 
 	public enum SearchableEnumNaming
@@ -44,7 +49,6 @@ namespace MyBox
 		/// The same as <see cref="Name"/> with the value displayed as a decimal integer afterwards.
 		/// </summary>
 		NameAndValueDec,
-		
 
 		/// <summary>
 		/// The same as <see cref="Name"/> with the value displayed as a hexadecimal integer and then as a decimal
@@ -65,7 +69,7 @@ namespace MyBox
 
 		/// <summary>Control how the list is sorted.</summary>
 		public SearchableEnumSorting Sorting = SearchableEnumSorting.Alphabetical;
-		
+
 		public SearchableEnumAttribute(
 			SearchableEnumNaming naming = SearchableEnumNaming.Name,
 			SearchableEnumSorting sorting = SearchableEnumSorting.Alphabetical
@@ -88,9 +92,11 @@ namespace MyBox.EditorTools
 	public class SearchableEnumDrawer : PropertyDrawer
 	{
 		private Internal.SearchableEnumAttributeDrawer _drawer;
+
 		public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
 		{
-			if (_drawer == null) _drawer = new Internal.SearchableEnumAttributeDrawer();
+			if (_drawer == null)
+				_drawer = new Internal.SearchableEnumAttributeDrawer();
 			GUIContent content = new GUIContent(property.displayName);
 			Rect drawerRect = EditorGUILayout.GetControlRect(true, _drawer.GetPropertyHeight(property, content));
 			_drawer.OnGUI(drawerRect, property, content);
@@ -124,9 +130,11 @@ namespace MyBox.Internal
 		/// <summary>
 		/// For caching the sorting and naming of each enum type to avoid doing it in every OnGUI call.
 		/// </summary>
-		private static Dictionary<EnumListDataKey, EnumListData> _enumListData = new Dictionary<EnumListDataKey, EnumListData>();
+		private static Dictionary<EnumListDataKey, EnumListData> _enumListData =
+			new Dictionary<EnumListDataKey, EnumListData>();
 
-		public override VisualElement CreatePropertyGUI(SerializedProperty property) => base.CreatePropertyGUI(property);
+		public override VisualElement CreatePropertyGUI(SerializedProperty property) =>
+			base.CreatePropertyGUI(property);
 
 		public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
 		{
@@ -145,7 +153,8 @@ namespace MyBox.Internal
 			// By manually creating the control ID, we can keep the ID for the
 			// label and button the same. This lets them be selected together
 			// with the keyboard in the inspector, much like a normal popup.
-			if (idHash == 0) idHash = "SearchableEnumAttributeDrawer".GetHashCode();
+			if (idHash == 0)
+				idHash = "SearchableEnumAttributeDrawer".GetHashCode();
 			int id = GUIUtility.GetControlID(idHash, FocusType.Keyboard, position);
 
 			label = EditorGUI.BeginProperty(position, label, property);
@@ -159,7 +168,10 @@ namespace MyBox.Internal
 			};
 			if (!_enumListData.ContainsKey(enumListDataKey))
 			{
-				_enumListData.Add(enumListDataKey, new EnumListData(enumListDataKey.EnumType, property, enumListDataKey.Attribute));
+				_enumListData.Add(
+					enumListDataKey,
+					new EnumListData(enumListDataKey.EnumType, property, enumListDataKey.Attribute)
+				);
 			}
 			var enumListData = _enumListData[enumListDataKey];
 
@@ -173,8 +185,7 @@ namespace MyBox.Internal
 					property.serializedObject.ApplyModifiedProperties();
 				};
 
-				SearchablePopup.Show(position, enumListData.DropdownValues,
-					dropdownIndex, onSelect);
+				SearchablePopup.Show(position, enumListData.DropdownValues, dropdownIndex, onSelect);
 			}
 
 			EditorGUI.EndProperty();
@@ -213,7 +224,7 @@ namespace MyBox.Internal
 
 			return false;
 		}
-		
+
 		private class EnumListDataKey : IEquatable<EnumListDataKey>
 		{
 			public Type EnumType;
@@ -240,17 +251,71 @@ namespace MyBox.Internal
 				return true;
 			}
 
-			public override int GetHashCode() => EnumType.GetHashCode() + Attribute.Naming.GetHashCode() << 2 + Attribute.Sorting.GetHashCode() << 4;
+			public override int GetHashCode() =>
+				EnumType.GetHashCode() + Attribute.Naming.GetHashCode() << 2 + Attribute.Sorting.GetHashCode() << 4;
 		}
-		
+
+		/// <summary>
+		/// A class with all the data for sorting an enum any way we want.
+		/// </summary>
+		private class EnumListEntry
+		{
+			public string Name;
+
+			/// <summary>
+			/// The value of the <see cref="Enum"/> entry.
+			/// Using a <see cref="long"/> to support any kind of underlying type for the <see cref="Enum"/>.
+			/// </summary>
+			public long Value;
+			public int EnumIndex;
+			public int PropertyIndex;
+		}
+
+		private class EnumListEntryCompareByName : IComparer<EnumListEntry>
+		{
+			public int Compare(EnumListEntry self, EnumListEntry other)
+			{
+				return self.Name.CompareTo(other.Name);
+			}
+		}
+
+		private class EnumListEntryCompareByValue : IComparer<EnumListEntry>
+		{
+			public int Compare(EnumListEntry self, EnumListEntry other)
+			{
+				return self.Value.CompareTo(other.Value);
+			}
+		}
+
+		private class EnumListEntryCompareByEnumIndex : IComparer<EnumListEntry>
+		{
+			public int Compare(EnumListEntry self, EnumListEntry other)
+			{
+				return self.EnumIndex.CompareTo(other.EnumIndex);
+			}
+		}
+
+		private class EnumListEntryCompareByPropertyIndex : IComparer<EnumListEntry>
+		{
+			public int Compare(EnumListEntry self, EnumListEntry other)
+			{
+				return self.PropertyIndex.CompareTo(other.PropertyIndex);
+			}
+		}
+
 		private class EnumListData
 		{
 			public Type EnumType;
 			public string[] DropdownValues;
-			private int[] _dropdownIndexToPropertyIndex;
+
 			private int[] _propertyIndexToDropdownIndex;
 
-			public int DropdownIndexToPropertyIndex(int i) => _dropdownIndexToPropertyIndex[i];
+			// Maybe this could be shared if there are places that sort or name the same enum differently.
+			// For now I'm not too worried about it since it can only happen once per EnumListDataKey.
+			private EnumListEntry[] _sortedList;
+
+			public int DropdownIndexToPropertyIndex(int i) => _sortedList[i].PropertyIndex;
+
 			public int PropertyIndexToDropdownIndex(int i) => _propertyIndexToDropdownIndex[i];
 
 			public EnumListData(Type enumType, SerializedProperty property, SearchableEnumAttribute searchableEnum)
@@ -258,72 +323,85 @@ namespace MyBox.Internal
 				EnumType = enumType;
 
 				var values = Enum.GetValues(EnumType);
+				DropdownValues = new string[values.Length];
+				_sortedList = new EnumListEntry[values.Length];
 
+				string[] names = null;
 				switch (searchableEnum.Naming)
 				{
 					default:
 					case SearchableEnumNaming.Name:
-						{
-							DropdownValues = property.enumNames;
-							break;
-						}
-					case SearchableEnumNaming.DisplayName:
-						{
-							DropdownValues = property.enumDisplayNames;
-							break;
-						}
 					case SearchableEnumNaming.NameAndValueDec:
-						{
-							var names = property.enumNames;
-							DropdownValues = new string[values.Length];
-							for (int i = 0; i < values.Length; i++)
-							{
-								var value = values.GetValue(i);
-								var decString = Enum.Format(EnumType, value, "d");
-								DropdownValues[i] = $"{names[i]}, {decString}";
-							}
-							break;
-						}
 					case SearchableEnumNaming.NameAndValueHex:
+						names = property.enumNames;
+						break;
+					case SearchableEnumNaming.DisplayName:
+						names = property.enumDisplayNames;
+						break;
+				}
+
+				for (int i = 0; i < values.Length; i++)
+				{
+					string name;
+					var value = values.GetValue(i);
+
+					switch (searchableEnum.Naming)
+					{
+						default:
+						case SearchableEnumNaming.Name:
+						case SearchableEnumNaming.DisplayName:
 						{
-							var names = property.enumNames;
-							DropdownValues = new string[values.Length];
-							for (int i = 0; i < values.Length; i++)
-							{
-								var value = values.GetValue(i);
-								var hexString = Enum.Format(EnumType, value, "x");
-								var decString = Enum.Format(EnumType, value, "d");
-								DropdownValues[i] = $"{names[i]}, 0x{hexString}, {decString}";
-							}
+							name = names[i];
 							break;
 						}
+						case SearchableEnumNaming.NameAndValueDec:
+						{
+							var decString = Enum.Format(EnumType, value, "d");
+							name = $"{names[i]}, {decString}";
+							break;
+						}
+						case SearchableEnumNaming.NameAndValueHex:
+						{
+							var hexString = Enum.Format(EnumType, value, "x");
+							var decString = Enum.Format(EnumType, value, "d");
+							name = $"{names[i]}, 0x{hexString}, {decString}";
+							break;
+						}
+					}
+
+					_sortedList[i] = new EnumListEntry()
+					{
+						Name = name,
+						Value = Convert.ToInt64(value),
+						EnumIndex = EnumType.GetField(names[i]).MetadataToken,
+						PropertyIndex = i,
+					};
 				}
 
-				_dropdownIndexToPropertyIndex = new int[DropdownValues.Length];
-				for (int i = 0; i < _dropdownIndexToPropertyIndex.Length; i++)
-				{
-					_dropdownIndexToPropertyIndex[i] = i;
-				}
-
+				IComparer<EnumListEntry> comparer = null;
 				switch (searchableEnum.Sorting)
 				{
 					default:
 					case SearchableEnumSorting.Alphabetical:
-						{
-							Array.Sort(DropdownValues, _dropdownIndexToPropertyIndex);
-							break;
-						}
+						comparer = new EnumListEntryCompareByName();
+						break;
 					case SearchableEnumSorting.Numerical:
-						{
-							// Already sorted this way.
-							break;
-						}
+						comparer = new EnumListEntryCompareByValue();
+						break;
+					case SearchableEnumSorting.DeclarationOrder:
+						comparer = new EnumListEntryCompareByEnumIndex();
+						break;
 				}
 
-				_propertyIndexToDropdownIndex = new int[DropdownValues.Length];
-				for (int i = 0; i < _propertyIndexToDropdownIndex.Length; i++)
+				Array.Sort(_sortedList, comparer);
+
+				DropdownValues = new string[_sortedList.Length];
+				_propertyIndexToDropdownIndex = new int[_sortedList.Length];
+				for (int i = 0; i < _sortedList.Length; i++)
 				{
-					_propertyIndexToDropdownIndex[_dropdownIndexToPropertyIndex[i]] = i;
+					DropdownValues[i] = _sortedList[i].Name;
+					var propertyIndex = DropdownIndexToPropertyIndex(i);
+					_propertyIndexToDropdownIndex[propertyIndex] = i;
 				}
 			}
 		}
